@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "FastAPI backend for the Stock Streaming Analytics platform"
 requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.109.0",
+    "fastapi[standard]>=0.109.0",
     "uvicorn[standard]>=0.27.0",
     "sqlalchemy>=2.0.0",
     "psycopg2-binary>=2.9.9",
