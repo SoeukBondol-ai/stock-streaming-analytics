@@ -1,0 +1,4 @@
+.env
+.venv
+# if run maunal it need to ignore node_module and venv 
+# but I already set up compose and easy run step 
