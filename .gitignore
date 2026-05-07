@@ -1,4 +1,42 @@
+# Environment
 .env
 .venv
-# if run maunal it need to ignore node_module and venv 
-# but I already set up compose and easy run step 
+venv/
+
+# Python
+*.pyc
+__pycache__/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+.next/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Spark/Hadoop
+metastore_db/
+warehouse/
+
+# Build outputs
+dist/
+build/

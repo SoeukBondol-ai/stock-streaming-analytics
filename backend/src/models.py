@@ -6,7 +6,7 @@ from sqlalchemy import (
     BigInteger, Boolean, Column, DateTime, Integer,
     Numeric, String, Text, func,
 )
-from database import Base
+from src.database import Base
 
 
 class BronzeStockQuote(Base):
