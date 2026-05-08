@@ -13,7 +13,7 @@ from database import get_db
 
 router = APIRouter(prefix="/api/stocks", tags=["stocks"])
 
-VALID_SYMBOLS = {"AAPL", "MSFT", "TSLA", "GOOGL", "AMZN", "NVDA"}
+VALID_SYMBOLS = {"AAPL", "MSFT", "TSLA", "GOOGL", "AMZN", "NVDA", "META", "NFLX"}
 
 
 # ─── Pydantic response schemas ──────────────────────────────────────────────

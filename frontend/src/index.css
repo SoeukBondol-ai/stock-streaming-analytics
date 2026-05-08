@@ -1,33 +1,36 @@
+/* @import url() FONT IMPORTS MUST ALWAYS BE AT THE VERY TOP OF THIS FILE, ABOVE THE TAILWIND IMPORTS — DO NOT DELETE THIS COMMENT */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* CRITICAL: THE FOLLOWING TAILWIND IMPORTS MUST NEVER BE DELETED OR REORDERED — DO NOT DELETE THIS COMMENT */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background-color: #f8fafc;
-  color: #0f172a;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  min-height: 100vh;
+/* END TAILWIND IMPORTS — ALL OTHER CSS MUST GO BELOW THIS LINE */
+
+@layer base {
+  body {
+    @apply bg-[#0a0a0a] text-neutral-200 font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+  }
 }
 
-/* Custom scrollbar styling */
+/* Custom scrollbar for webkit */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
+  @apply bg-neutral-800 rounded-full;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #1068eb;
+  @apply bg-neutral-700;
 }
 
-/* Custom hide-scrollbar class for horizontal horizontal/card views */
+/* Custom hide-scrollbar class for horizontal/card views */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

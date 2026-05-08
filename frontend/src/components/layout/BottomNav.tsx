@@ -12,7 +12,7 @@ const NAV_ITEMS = [
 
 export default function BottomNav() {
   return (
-    <nav className="md:hidden fixed bottom-4 left-4 right-4 bg-app-panel/90 backdrop-blur-xl border border-app-border rounded-2xl py-2 px-4 shadow-[0_10px_30px_rgba(0,0,0,0.5)] z-50 flex justify-around items-center">
+    <nav className="md:hidden fixed bottom-4 left-4 right-4 bg-neutral-950/85 backdrop-blur-xl border border-neutral-800/60 rounded-2xl py-2 px-4 shadow-[0_10px_30px_rgba(0,0,0,0.5)] z-50 flex justify-around items-center">
       {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
         <NavLink
           key={to}
@@ -22,21 +22,21 @@ export default function BottomNav() {
             cn(
               'flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all duration-300 relative',
               isActive
-                ? 'text-app-blue'
-                : 'text-app-muted hover:text-app-text'
+                ? 'text-blue-400'
+                : 'text-neutral-400 hover:text-neutral-200'
             )
           }
         >
           {({ isActive }) => (
             <>
               {isActive && (
-                <span className="absolute inset-0 bg-app-blue/10 rounded-xl border border-app-blue/15 -z-10 shadow-[0_0_10px_rgba(85,183,255,0.05)]" />
+                <span className="absolute inset-0 bg-blue-500/10 rounded-xl border border-blue-500/15 -z-10 shadow-[0_0_10px_rgba(85,183,255,0.05)]" />
               )}
               <Icon
                 size={18}
                 className={cn(
                   'transition-all duration-300',
-                  isActive ? 'scale-110 text-app-blue' : 'text-app-muted'
+                  isActive ? 'scale-110 text-blue-400' : 'text-neutral-400'
                 )}
               />
               <span className="text-[10px] font-medium tracking-wide">{label}</span>

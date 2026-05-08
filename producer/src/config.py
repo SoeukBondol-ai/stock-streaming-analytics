@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     twelve_data_api_key: str = ""
 
     # Symbols to track
-    stock_symbols: str = "AAPL,MSFT,TSLA,GOOGL,AMZN"
+    stock_symbols: str = "AAPL,MSFT,TSLA,GOOGL,AMZN,NVDA,META,NFLX"
     fetch_interval_seconds: int = 5
 
     @property
