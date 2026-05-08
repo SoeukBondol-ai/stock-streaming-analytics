@@ -27,6 +27,9 @@ _MOCK_BASE: Dict[str, float] = {
     "TSLA":  245.8,
     "GOOGL": 175.3,
     "AMZN":  195.7,
+    "NVDA":  822.79,
+    "META":  502.3,
+    "NFLX":  619.34,
 }
 _mock_prices: Dict[str, float] = dict(_MOCK_BASE)
 
@@ -54,6 +57,46 @@ def _mock_quote(symbol: str) -> Dict[str, Any]:
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "source":    "mock",
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Yahoo Finance REST (Unrestricted, real-time, no API key required)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _yahoo_finance_quote(symbol: str) -> Optional[Dict[str, Any]]:
+    try:
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.3"
+        }
+        resp = requests.get(url, headers=headers, timeout=5)
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        result = data.get("chart", {}).get("result", [])
+        if not result:
+            return None
+        meta = result[0].get("meta", {})
+        price = meta.get("regularMarketPrice")
+        if price is None:
+            return None
+        
+        # Use previousClose or chartPreviousClose as a baseline for Open
+        prev_close = meta.get("previousClose") or meta.get("chartPreviousClose") or price
+        
+        return {
+            "symbol":    symbol,
+            "price":     price,
+            "open":      prev_close,
+            "high":      meta.get("regularMarketDayHigh") or price,
+            "low":       meta.get("regularMarketDayLow") or price,
+            "volume":    meta.get("regularMarketVolume") or 1000000,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "source":    "yahoo_finance",
+        }
+    except Exception as exc:
+        log.warning("Yahoo Finance error for %s: %s", symbol, exc)
+        return None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -125,7 +168,7 @@ def _alpha_vantage_quote(symbol: str) -> Optional[Dict[str, Any]]:
 
 def fetch_quote(symbol: str) -> Dict[str, Any]:
     """Try real APIs in order, fall back to mock generator."""
-    quote = _finnhub_quote(symbol) or _alpha_vantage_quote(symbol)
+    quote = _yahoo_finance_quote(symbol) or _finnhub_quote(symbol) or _alpha_vantage_quote(symbol)
     if quote is None:
         quote = _mock_quote(symbol)
     return quote

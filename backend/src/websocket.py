@@ -14,7 +14,7 @@ from database import SessionLocal
 
 log = logging.getLogger("websocket")
 
-SYMBOLS = ["AAPL", "MSFT", "TSLA", "GOOGL", "AMZN", "NVDA"]
+SYMBOLS = ["AAPL", "MSFT", "TSLA", "GOOGL", "AMZN", "NVDA", "META", "NFLX"]
 PUSH_INTERVAL = 3  # seconds
 
 

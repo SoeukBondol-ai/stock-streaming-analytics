@@ -2,7 +2,6 @@
     "compilerOptions": {
         "target": "ES2020",
         "useDefineForClassFields": true,
-        "ignoreDeprecations": "6.0",
         "lib": [
             "DOM",
             "ESNext"
