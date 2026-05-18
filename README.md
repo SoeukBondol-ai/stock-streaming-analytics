@@ -6,6 +6,12 @@ Real-time stock market analytics pipeline using **Kafka · PySpark · PostgreSQL
 Stock API → Producer → Kafka → PySpark → Bronze/Silver/Gold → FastAPI → React Dashboard
 ```
 
+<div align="center">
+  <video src="public/SampleCast.mp4" controls autoplay loop muted width="100%">
+    <a href="public/SampleCast.mp4">▶ Watch Demo</a>
+  </video>
+</div>
+
 
 ## Quick Start
 
@@ -153,6 +159,8 @@ npm run dev   # http://localhost:5173
 - **Add Grafana**: point it at PostgreSQL and build dashboards using the Gold tables.
 - **Add Apache Superset**: connect to PostgreSQL for ad-hoc SQL exploration.
 - **Export CSV**: add a `GET /api/stocks/{sym}/export` endpoint that streams a CSV response.
+
+https://query1.finance.yahoo.com/v8/finance/chart/googl
 
 ---
 
