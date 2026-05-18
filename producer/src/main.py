@@ -46,9 +46,12 @@ def main():
                     break
                 try:
                     quote = fetch_quote(symbol)
-                    producer.send_quote(quote)
-                    log.info("📤  %s  price=%.4f  source=%s",
-                             symbol, quote["price"], quote["source"])
+                    if quote:
+                        producer.send_quote(quote)
+                        log.info("📤  %s  price=%.4f  source=%s",
+                                 symbol, quote["price"], quote["source"])
+                    else:
+                        log.warning("⚠️  Failed to fetch real data for %s", symbol)
                 except Exception as exc:
                     log.error("Failed to process %s: %s", symbol, exc)
             time.sleep(interval)

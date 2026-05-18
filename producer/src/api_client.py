@@ -1,13 +1,13 @@
 """
-API client with multi-source support and mock fallback.
+API client with multi-source support.
 
 Priority:
-  1. Finnhub  (real-time WebSocket quotes – REST used here for simplicity)
-  2. Alpha Vantage  (5-min delayed free tier)
-  3. Mock generator  (always available; used when no API key is configured)
+  1. Yahoo Finance  (real-time, no key required)
+  2. Finnhub        (real-time, 60 req/min free)
+  3. Twelve Data    (real-time, 800 req/day free)
+  4. Alpha Vantage  (5 req/min free)
 """
-import random
-import time
+
 import logging
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
@@ -18,45 +18,7 @@ from config import settings
 
 log = logging.getLogger(__name__)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Base prices for the mock generator (seeded from realistic values)
-# ─────────────────────────────────────────────────────────────────────────────
-_MOCK_BASE: Dict[str, float] = {
-    "AAPL":  189.5,
-    "MSFT":  415.2,
-    "TSLA":  245.8,
-    "GOOGL": 175.3,
-    "AMZN":  195.7,
-    "NVDA":  822.79,
-    "META":  502.3,
-    "NFLX":  619.34,
-}
-_mock_prices: Dict[str, float] = dict(_MOCK_BASE)
 
-
-def _mock_quote(symbol: str) -> Dict[str, Any]:
-    """Generate a realistic-looking random stock quote."""
-    base = _mock_prices.get(symbol, 100.0)
-    # Random walk: ±0.5 %
-    change_pct = random.gauss(0, 0.005)
-    price = round(base * (1 + change_pct), 4)
-    _mock_prices[symbol] = price
-
-    open_p  = round(price * random.uniform(0.99, 1.01), 4)
-    high_p  = round(max(price, open_p) * random.uniform(1.0, 1.005), 4)
-    low_p   = round(min(price, open_p) * random.uniform(0.995, 1.0), 4)
-    volume  = random.randint(100_000, 5_000_000)
-
-    return {
-        "symbol":    symbol,
-        "price":     price,
-        "open":      open_p,
-        "high":      high_p,
-        "low":       low_p,
-        "volume":    volume,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "source":    "mock",
-    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -163,12 +125,48 @@ def _alpha_vantage_quote(symbol: str) -> Optional[Dict[str, Any]]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Twelve Data
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _twelve_data_quote(symbol: str) -> Optional[Dict[str, Any]]:
+    if not settings.twelve_data_api_key:
+        return None
+    try:
+        url = "https://api.twelvedata.com/quote"
+        params = {
+            "symbol":  symbol,
+            "apikey":  settings.twelve_data_api_key,
+        }
+        resp = requests.get(url, params=params, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("status") == "error" or not data.get("close"):
+            return None
+        return {
+            "symbol":    symbol,
+            "price":     float(data["close"]),
+            "open":      float(data.get("open") or data["close"]),
+            "high":      float(data.get("high") or data["close"]),
+            "low":       float(data.get("low") or data["close"]),
+            "volume":    int(data.get("volume") or 0),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "source":    "twelve_data",
+        }
+    except Exception as exc:
+        log.warning("Twelve Data error for %s: %s", symbol, exc)
+        return None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Public interface
 # ─────────────────────────────────────────────────────────────────────────────
 
-def fetch_quote(symbol: str) -> Dict[str, Any]:
-    """Try real APIs in order, fall back to mock generator."""
-    quote = _yahoo_finance_quote(symbol) or _finnhub_quote(symbol) or _alpha_vantage_quote(symbol)
-    if quote is None:
-        quote = _mock_quote(symbol)
-    return quote
+def fetch_quote(symbol: str) -> Optional[Dict[str, Any]]:
+    """Try real APIs in order, return None if all fail."""
+    return (
+        _yahoo_finance_quote(symbol)
+        or _finnhub_quote(symbol)
+        or _twelve_data_quote(symbol)
+        or _alpha_vantage_quote(symbol)
+    )
+
