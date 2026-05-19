@@ -26,6 +26,10 @@ RUN curl -fSL \
     https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.1/postgresql-42.7.1.jar \
     -o /opt/spark/jars/postgresql-42.7.1.jar
 
+# Pre-create checkpoint directory with open permissions so the spark
+# user (non-root) can write into it even when mounted as a Docker volume.
+RUN mkdir -p /tmp/checkpoints && chmod 777 /tmp/checkpoints
+
 USER spark
 
 WORKDIR /opt/spark

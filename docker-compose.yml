@@ -59,12 +59,39 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # initdb.d only runs on a FRESH empty volume.
+      # The init-db service below handles existing volumes too.
       - ./sql:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stockuser}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - stock-net
+
+  # ─────────────────────────────────────────────
+  # DB Init – runs every startup to ensure DB +
+  # schema exist (idempotent, safe to re-run).
+  # Fixes the "stockdb doesn't exist" error when
+  # the postgres_data volume already exists.
+  # ─────────────────────────────────────────────
+  init-db:
+    image: postgres:15-alpine
+    container_name: stock-init-db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-stockuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stockpass}
+      POSTGRES_DB: ${POSTGRES_DB:-stockdb}
+    volumes:
+      - ./sql:/sql:ro
+    entrypoint: ["/bin/sh", "/sql/init_db.sh"]
+    restart: "no"
     networks:
       - stock-net
 
@@ -94,15 +121,26 @@ services:
       dockerfile: Dockerfile
     container_name: spark-master
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    depends_on:
+      init-db:
+        condition: service_completed_successfully
     environment:
       SPARK_MASTER_HOST: spark-master
       SPARK_MASTER_PORT: 7077
       SPARK_MASTER_WEBUI_PORT: 8080
+      # PG credentials so stream_quotes.py can connect without passing via docker exec
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-stockdb}
+      POSTGRES_USER: ${POSTGRES_USER:-stockuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stockpass}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     ports:
       - "8082:8080"
       - "7078:7077"
     volumes:
       - ./spark/jobs:/opt/spark/jobs
+      - spark_checkpoints:/tmp/checkpoints
     networks:
       - stock-net
 
@@ -121,10 +159,17 @@ services:
       SPARK_WORKER_MEMORY: 2g
       SPARK_WORKER_CORES: "2"
       SPARK_WORKER_WEBUI_PORT: 8081
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-stockdb}
+      POSTGRES_USER: ${POSTGRES_USER:-stockuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stockpass}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     ports:
       - "8083:8081"
     volumes:
       - ./spark/jobs:/opt/spark/jobs
+      - spark_checkpoints:/tmp/checkpoints
     networks:
       - stock-net
 
@@ -186,6 +231,8 @@ services:
 
 volumes:
   postgres_data:
+  # Named volume for Spark checkpoints — survives container restarts
+  spark_checkpoints:
 
 networks:
   stock-net:

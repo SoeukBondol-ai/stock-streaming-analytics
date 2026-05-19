@@ -9,6 +9,7 @@ Simplified approach to avoid Py4J callback errors:
 
 import os
 import logging
+import uuid
 import psycopg2
 
 from pyspark.sql import SparkSession
@@ -37,6 +38,12 @@ PG_USER = os.getenv("POSTGRES_USER", "stockuser")
 PG_PASS = os.getenv("POSTGRES_PASSWORD", "stockpass")
 
 PRICE_SPIKE_PCT = 2.0   # alert threshold %
+CHECKPOINT_ROOT = os.getenv("STREAM_CHECKPOINT_ROOT", "/tmp/checkpoints")
+RUN_ID = os.getenv("STREAM_RUN_ID", uuid.uuid4().hex[:8])
+
+
+def checkpoint_path(layer_name: str) -> str:
+    return os.path.join(CHECKPOINT_ROOT, RUN_ID, layer_name)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Postgres helper
@@ -257,7 +264,7 @@ def write_gold(batch_df, batch_id):
 bronze_query = (
     parsed.writeStream
     .foreachBatch(write_bronze)
-    .option("checkpointLocation", "/tmp/checkpoints/bronze")
+    .option("checkpointLocation", checkpoint_path("bronze"))
     .trigger(processingTime="5 seconds")
     .start()
 )
@@ -266,7 +273,7 @@ log.info(" Bronze query started")
 silver_query = (
     parsed.writeStream
     .foreachBatch(write_silver)
-    .option("checkpointLocation", "/tmp/checkpoints/silver")
+    .option("checkpointLocation", checkpoint_path("silver"))
     .trigger(processingTime="5 seconds")
     .start()
 )
@@ -275,7 +282,7 @@ log.info(" Silver query started")
 gold_query = (
     parsed.writeStream
     .foreachBatch(write_gold)
-    .option("checkpointLocation", "/tmp/checkpoints/gold")
+    .option("checkpointLocation", checkpoint_path("gold"))
     .trigger(processingTime="10 seconds")
     .start()
 )
