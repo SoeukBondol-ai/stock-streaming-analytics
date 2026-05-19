@@ -284,12 +284,14 @@ stock-streaming/
 │
 ├── 📁 spark/                      # PySpark streaming job
 │   ├── Dockerfile                 # Spark image + Python deps + JDBC jars
-│   ├── submit_job.sh              # Helper: submits job with correct env vars
+│   ├── submit_job.sh              # Helper: submits job with correct env vars (Linux/Mac)
+│   ├── submit_job.ps1             # Helper: submits job for Windows PowerShell
 │   └── jobs/
 │       └── stream_quotes.py       # Structured Streaming: Bronze → Silver → Gold
 │
 ├── 📁 backend/                    # FastAPI REST + WebSocket server
-│   ├── Dockerfile
+│   ├── Dockerfile                 # Uses uv + pyproject.toml
+│   ├── pyproject.toml
 │   └── src/
 │       ├── main.py                # App + CORS + WebSocket setup
 │       ├── database.py            # SQLAlchemy engine + session
@@ -297,7 +299,15 @@ stock-streaming/
 │       └── routers/
 │           ├── stocks.py          # GET /api/stocks/*
 │           ├── alerts.py          # GET /api/alerts
-│           └── market.py          # GET /api/market/*
+│           ├── market.py          # GET /api/market/*
+│           └── ml.py              # GET /api/ml/* (predictions showcase)
+│
+├── 📁 ml/                         # 🤖 Price Direction Classifier (ML module)
+│   ├── Dockerfile                 # Uses uv + pyproject.toml (same as backend/producer)
+│   ├── pyproject.toml             # scikit-learn, pandas, numpy, psycopg2
+│   ├── train.py                   # Pulls Gold data, trains Random Forest, saves model
+│   ├── predict.py                 # Loads model, predicts every 30s, writes to DB
+│   └── run.py                     # Entrypoint: train → predict loop (auto-retrains hourly)
 │
 ├── 📁 frontend/                   # React + Vite dashboard
 │   └── src/
@@ -316,6 +326,7 @@ stock-streaming/
     ├── 002_create_silver_tables.sql
     ├── 003_create_gold_tables.sql
     ├── 004_seed_dim_stock.sql
+    ├── 005_create_ml_tables.sql   # ml_predictions + ml_model_runs
     └── init_db.sh                 # Idempotent init script (runs every startup)
 ```
 
@@ -377,6 +388,10 @@ All endpoints served from **http://localhost:8000**. Interactive docs at `/docs`
 | `GET` | `/api/alerts` | Recent anomaly alerts |
 | `GET` | `/api/market/overview` | Enriched snapshot for all symbols |
 | `GET` | `/api/market/pipeline` | Bronze/Silver/Gold row counts |
+| `GET` | `/api/ml/predictions` |  Latest UP/DOWN prediction for every symbol |
+| `GET` | `/api/ml/predictions/{sym}` |  Prediction history for one symbol |
+| `GET` | `/api/ml/model` |  Training info: accuracy, top feature, rows trained |
+| `GET` | `/api/ml/summary` |  Total predictions, UP/DOWN split, avg confidence |
 | `WS` | `/ws/stocks` | WebSocket — live push every 3 seconds |
 
 ---
@@ -431,7 +446,8 @@ SECRET_KEY=change_me_in_production
 SELECT 'bronze' AS layer, COUNT(*) FROM bronze_stock_quotes
 UNION ALL SELECT 'silver', COUNT(*) FROM silver_stock_quotes
 UNION ALL SELECT 'gold',   COUNT(*) FROM fact_stock_price
-UNION ALL SELECT 'alerts', COUNT(*) FROM stock_alerts;
+UNION ALL SELECT 'alerts', COUNT(*) FROM stock_alerts
+UNION ALL SELECT 'ml_predictions', COUNT(*) FROM ml_predictions;
 
 -- Latest prices
 SELECT symbol, price, pct_change, anomaly_flag, event_time
@@ -441,6 +457,17 @@ LIMIT 20;
 
 -- Recent alerts
 SELECT * FROM stock_alerts ORDER BY created_at DESC LIMIT 10;
+
+-- ML predictions (latest per symbol)
+SELECT DISTINCT ON (symbol)
+    symbol, prediction, confidence, price_at_pred, predicted_at
+FROM ml_predictions
+ORDER BY symbol, predicted_at DESC;
+
+-- ML model training history (accuracy over time)
+SELECT model_version, total_rows, accuracy, top_feature, trained_at
+FROM ml_model_runs
+ORDER BY trained_at DESC;
 ```
 
 ---
@@ -458,6 +485,9 @@ SELECT * FROM stock_alerts ORDER BY created_at DESC LIMIT 10;
 | Port 3000 already in use | Another app using it | Edit `docker-compose.yml`: change `"3000:80"` to `"3001:80"` |
 | Spark UI shows no workers | Worker not connected | Check `docker logs spark-worker` for errors |
 | `Error: ENOENT` on frontend | Node modules missing | Run `docker compose build --no-cache frontend` |
+| ML not predicting yet | Not enough Gold rows | Wait for Spark to collect 100+ rows, or lower `TRAIN_MIN_ROWS` in `docker-compose.yml` |
+| ML always predicts DOWN | Mock/flat price data | Normal with mock data (zero volatility — model is correct). Use real API keys for varied predictions |
+| ML container crashes | Missing model or DB not ready | Check `docker logs stock-ml`. It retries automatically if data is insufficient |
 
 ---
 
@@ -466,8 +496,10 @@ SELECT * FROM stock_alerts ORDER BY created_at DESC LIMIT 10;
 | Feature | How to Add |
 |---------|-----------|
 | **RSI / MACD / Bollinger Bands** | Add columns to `fact_stock_price`, compute inside `write_gold()` in `stream_quotes.py` |
-| **ML Anomaly Detection** | Replace threshold rule in `write_gold()` with scikit-learn Isolation Forest or LSTM |
-| **Grafana Dashboard** | Add Grafana service to `docker-compose.yml`, connect to PostgreSQL Gold tables |
+| **ML Anomaly Detection** | Replace the `>2%` threshold in `write_gold()` with scikit-learn Isolation Forest |
+| **Time Series Forecast (Prophet)** | Add `prophet` to `ml/pyproject.toml`, create `forecast.py`, new endpoint `/api/ml/forecast/{sym}` |
+| **LSTM Deep Learning** | Add `torch` to `ml/pyproject.toml`, replace Random Forest in `ml/train.py` with LSTM |
+| **Grafana Dashboard** | Add Grafana service to `docker-compose.yml`, connect to PostgreSQL Gold + ML tables |
 | **Apache Superset** | Add Superset service, connect to `postgres:5432/stockdb` for SQL exploration |
 | **CSV Export** | Add `GET /api/stocks/{sym}/export` endpoint in `backend/src/routers/stocks.py` |
 | **More Symbols** | Edit `STOCK_SYMBOLS` in `.env` — no code changes needed |
