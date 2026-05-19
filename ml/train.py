@@ -167,8 +167,8 @@ def train(df: pd.DataFrame):
     log.info("=" * 50)
     log.info(f"  MODEL ACCURACY: {accuracy:.1%}")
     log.info("=" * 50)
-    log.info("\nClassification Report:")
-    print(classification_report(y_test, y_pred, target_names=["DOWN", "UP"]))
+    # Specify labels=[0, 1] so that classification_report works even when only one class is present in y_test
+    print(classification_report(y_test, y_pred, labels=[0, 1], target_names=["DOWN", "UP"], zero_division=0))
 
     # Feature importances (great for showcase!)
     importances = dict(zip(FEATURE_COLUMNS, model.feature_importances_))
