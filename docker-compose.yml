@@ -229,10 +229,41 @@ services:
     networks:
       - stock-net
 
+  # ─────────────────────────────────────────────
+  # ML Service – Price Direction Classifier
+  # Trains on startup, then predicts every 30s.
+  # Predictions stored in ml_predictions table.
+  # ─────────────────────────────────────────────
+  ml-trainer:
+    build:
+      context: ./ml
+      dockerfile: Dockerfile
+    container_name: stock-ml
+    depends_on:
+      init-db:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-stockdb}
+      POSTGRES_USER: ${POSTGRES_USER:-stockuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stockpass}
+      TRAIN_MIN_ROWS: 100             # Need at least 100 Gold rows to train
+      PREDICT_INTERVAL_SECONDS: 30   # Predict every 30 seconds
+      RETRAIN_EVERY_MINUTES: 60      # Retrain model every 60 minutes
+      MODEL_DIR: /ml/model
+    volumes:
+      - ml_models:/ml/model          # Persist trained model across restarts
+    restart: unless-stopped
+    networks:
+      - stock-net
+
 volumes:
   postgres_data:
   # Named volume for Spark checkpoints — survives container restarts
   spark_checkpoints:
+  # Named volume for the trained ML model — survives container restarts
+  ml_models:
 
 networks:
   stock-net:

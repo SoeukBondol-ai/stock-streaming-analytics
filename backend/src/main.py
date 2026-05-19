@@ -8,7 +8,7 @@ from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine, Base
-from routers import stocks, alerts, market
+from routers import stocks, alerts, market, ml
 from websocket import websocket_endpoint
 
 logging.basicConfig(level=logging.INFO)
@@ -42,6 +42,7 @@ app.add_middleware(
 app.include_router(stocks.router)
 app.include_router(alerts.router)
 app.include_router(market.router)
+app.include_router(ml.router)
 
 
 # WebSocket

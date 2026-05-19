@@ -25,7 +25,7 @@ echo "=========================================="
 
 # ── Wait for Postgres to be ready ──────────────────────────────────────────
 echo "Waiting for PostgreSQL to be ready..."
-until pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -q; do
+until pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d postgres -q; do
   echo "  ... not ready yet, retrying in 2s"
   sleep 2
 done
